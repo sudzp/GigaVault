@@ -1,0 +1,94 @@
+# GigaVault — MVP1 (Epic 1: Stories 1.1 & 1.2)
+
+Local dev stack for the resumable, chunked large-file upload pipeline.
+
+**In scope for this pass:** Story 1.1 (client-side chunking + MD5) and Story 1.2
+(resumable multipart upload via S3/MinIO). Story 1.3 (Service Worker /
+background upload session so uploads survive navigation) is **not** wired up
+yet — the current version uploads via a dedicated Web Worker, which keeps the
+UI thread free and survives tab switches, but not a full page navigation or
+close. We'll layer that in next.
+
+## Stack
+
+- **Backend**: Go + Gin, talks to S3 via `aws-sdk-go-v2`, tracks session/part
+  state in Postgres.
+- **Frontend**: React + TypeScript + Vite. A Web Worker does chunk slicing,
+  MD5 hashing, and the actual `fetch` upload so the main thread never blocks.
+- **Storage**: [LocalStack](https://www.localstack.cloud/) (S3-compatible),
+  Postgres for upload metadata.
+
+> **Why LocalStack and not MinIO?** MinIO discontinued free Docker image
+> distribution in October 2025 and archived its community-edition repo in
+> February 2026, redirecting users to its commercial AIStor product — the
+> `minio/minio` image no longer exists on Docker Hub or quay.io. LocalStack is
+> still actively maintained, so that's what this stack uses for local S3
+> emulation.
+
+## Running it
+
+```bash
+docker compose up --build
+```
+
+First build needs internet access (Go module proxy + npm registry) — after
+that, `docker compose up` is fully local.
+
+Once it's up:
+
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:8080/healthz
+- LocalStack S3 endpoint: http://localhost:4566 (dummy creds: `test` / `test`)
+- Postgres: `localhost:5432` (user/pass/db: `gigavault` / `gigavault` / `gigavault`)
+
+The `gigavault` bucket is created automatically by the backend on startup.
+
+LocalStack's community edition doesn't ship a bucket-browsing web UI, so to
+poke around the uploaded objects from your host, use the AWS CLI pointed at
+the LocalStack endpoint:
+
+```bash
+aws --endpoint-url=http://localhost:4566 s3 ls s3://gigavault --recursive \
+  --region us-east-1 \
+  # or export these once: AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test
+```
+
+## How the pipeline works
+
+1. **Init** — frontend computes a chunk size (10–50MB, scaled so a file never
+   exceeds ~9,500 parts) and calls `POST /api/uploads/init`. The backend opens
+   an S3 `CreateMultipartUpload` session and stores it in Postgres.
+2. **Chunk & upload** — a Web Worker slices the file with `File.slice()`
+   (lazy — nothing is read into memory until needed), computes an MD5 per
+   chunk, and `PUT`s each chunk to `/api/uploads/:sessionId/parts/:partNumber`
+   with retry + exponential backoff (5 attempts). The backend re-checksums the
+   bytes it received, calls S3 `UploadPart`, and records the returned ETag.
+3. **Resume** — the browser tracks session state in IndexedDB. If the same
+   file (matched by name + size + lastModified) is re-selected, the frontend
+   calls `GET /api/uploads/:sessionId/resume`, which asks S3 `ListParts` for
+   the authoritative list of parts already landed, and the worker skips those.
+4. **Complete** — once every chunk is uploaded, the frontend calls
+   `POST /api/uploads/:sessionId/complete`, which pulls the full part list
+   from Postgres and calls S3 `CompleteMultipartUpload`.
+
+## Notes / simplifications for this MVP pass
+
+- Files smaller than the minimum chunk size still go through the multipart
+  pipeline as a single part — simpler than branching to a separate
+  single-PUT path, and functionally equivalent.
+- Chunk uploads are proxied through the Go backend (not pre-signed direct-to-S3
+  URLs). This is simpler for local dev; swap to pre-signed URLs later if you
+  want the browser talking to MinIO/S3 directly.
+- `go.mod` intentionally has no pinned `require`/`go.sum` checked in — the
+  Docker build runs `go mod tidy` to resolve and lock the dependency graph
+  against the module proxy at build time.
+- No auth yet — anyone who can reach the API can start/resume/complete an
+  upload. Fine for local dev, not for anything further than that.
+- Zero-knowledge client-side encryption (implied by the product subtext) isn't
+  part of these two stories' acceptance criteria, so it's out of scope here.
+
+## Next up
+
+- Story 1.3: move upload orchestration into a Service Worker (or equivalent
+  background session) so an upload survives full page navigation, plus a
+  completion notification when the tab is backgrounded.

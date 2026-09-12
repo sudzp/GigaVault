@@ -189,12 +189,11 @@ offline recovery, persisted sessions, SPA navigation, and notifications—follow
 
 ## Documentation
 
-- [MVP 1 status and next plan](docs/MVP1_REQUIREMENTS.md)
+- [Project status and roadmap](docs/PROJECT_ROADMAP.md)
 - [Manual test guide](docs/TESTING.md)
 - [AGPL-3.0 license](LICENSE)
 
 ## Roadmap
 
-The next priorities are automated frontend and backend test coverage, production
-security and operational controls, and finally client-side encryption plus key
-lifecycle management.
+The sequenced backlog, completed work, and the zero-knowledge architecture
+decision gate are maintained in [docs/PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md).

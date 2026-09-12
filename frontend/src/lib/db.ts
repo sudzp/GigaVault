@@ -43,6 +43,14 @@ export async function getUploadRecord(fingerprint: string) {
   return db.get('uploads', fingerprint);
 }
 
+export async function listUnfinishedUploadRecords() {
+  const db = await getDB();
+  const records = await db.getAll('uploads');
+  return records
+    .filter((record) => record.status !== 'completed')
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
 export async function saveUploadRecord(record: UploadRecord) {
   const db = await getDB();
   await db.put('uploads', record);

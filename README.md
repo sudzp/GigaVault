@@ -11,7 +11,8 @@ or OS suspension. Interrupted uploads can be resumed by selecting the same file
 again.
 
 See [MVP 1 requirements and roadmap](docs/MVP1_REQUIREMENTS.md) for the
-product scope, acceptance criteria, and planned work.
+completed work and the next plan. See the [manual test guide](docs/TESTING.md)
+for a repeatable way to exercise the upload features.
 
 ## Stack
 
@@ -102,14 +103,18 @@ aws --endpoint-url=http://localhost:4566 s3 ls s3://gigavault --recursive \
   upload. Fine for local dev, not for anything further than that.
 - Zero-knowledge client-side encryption (implied by the product subtext) isn't
   part of these two stories' acceptance criteria, so it's out of scope here.
+- The Vite development server pre-bundles `spark-md5` at startup. The hashing
+  dependency is used by the upload worker; pre-bundling prevents Vite from
+  discovering it during the first upload and refreshing the page mid-session.
 
 ## Next up
 
 - Story 1.3: explicit pause/resume/abort controls and connection-aware recovery
-  are implemented. Next, add an upload manager that survives SPA route changes
-  and background completion notifications. Browser close and OS suspension will
-  remain recoverable-resume scenarios rather than guaranteed background
-  execution.
+  are implemented. Next, centralize the upload lifecycle in an application-level
+  upload manager, restore unfinished IndexedDB sessions after an SPA route
+  change, and add background completion and failure notifications. Browser close
+  and OS suspension will remain recoverable-resume scenarios rather than
+  guaranteed background execution.
 - Test coverage: backend tests with a mocked `S3Client` for checksum mismatch,
   stale sessions, resume reconciliation, and completion validation; frontend
   tests for chunk-size boundaries, retry behavior, and resume logic.

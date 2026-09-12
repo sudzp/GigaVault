@@ -11,8 +11,8 @@ close. We'll layer that in next.
 
 ## Stack
 
-- **Backend**: Go + Gin, talks to S3 via `aws-sdk-go-v2`, tracks session/part
-  state in Postgres.
+- **Backend**: Java 21 + Spring Boot 3 (Gradle), talks to S3 via the AWS SDK
+  for Java v2, tracks session/part state in Postgres via Spring Data JPA.
 - **Frontend**: React + TypeScript + Vite. A Web Worker does chunk slicing,
   MD5 hashing, and the actual `fetch` upload so the main thread never blocks.
 - **Storage**: [LocalStack](https://www.localstack.cloud/) (S3-compatible),
@@ -25,14 +25,24 @@ close. We'll layer that in next.
 > still actively maintained, so that's what this stack uses for local S3
 > emulation.
 
+> **Backend history:** the first pass of this MVP used a Go/Gin backend.
+> It's been rewritten in Java/Spring Boot; the HTTP API contract (routes,
+> request/response shapes, status codes) is unchanged, so the frontend
+> needed no changes.
+
 ## Running it
 
 ```bash
 docker compose up --build
 ```
 
-First build needs internet access (Go module proxy + npm registry) — after
-that, `docker compose up` is fully local.
+First build needs internet access (Gradle/Maven Central + npm registry) —
+after that, `docker compose up` is fully local. The backend image is built
+in two stages: a `gradle:8.10-jdk21` image compiles the Spring Boot fat jar,
+then it's copied into a slim `eclipse-temurin:21-jre-alpine` runtime image.
+No Gradle wrapper is checked into the repo — the Docker build supplies
+Gradle itself, the same way the earlier Go version let `go mod tidy` resolve
+dependencies at build time rather than committing a lockfile.
 
 Once it's up:
 
@@ -76,12 +86,14 @@ aws --endpoint-url=http://localhost:4566 s3 ls s3://gigavault --recursive \
 - Files smaller than the minimum chunk size still go through the multipart
   pipeline as a single part — simpler than branching to a separate
   single-PUT path, and functionally equivalent.
-- Chunk uploads are proxied through the Go backend (not pre-signed direct-to-S3
-  URLs). This is simpler for local dev; swap to pre-signed URLs later if you
-  want the browser talking to MinIO/S3 directly.
-- `go.mod` intentionally has no pinned `require`/`go.sum` checked in — the
-  Docker build runs `go mod tidy` to resolve and lock the dependency graph
-  against the module proxy at build time.
+- Chunk uploads are proxied through the Java backend (not pre-signed
+  direct-to-S3 URLs). This is simpler for local dev; swap to pre-signed URLs
+  later if you want the browser talking to LocalStack/S3 directly.
+- Schema is created via Hibernate's `ddl-auto: update` rather than a real
+  migration tool — fine for local dev, swap for Flyway or Liquibase before
+  anything further than that. Also note `upload_parts.session_id` is a plain
+  string column, not a JPA-managed foreign key, so referential integrity
+  between the two tables isn't enforced at the DB level yet.
 - No auth yet — anyone who can reach the API can start/resume/complete an
   upload. Fine for local dev, not for anything further than that.
 - Zero-knowledge client-side encryption (implied by the product subtext) isn't
@@ -92,3 +104,6 @@ aws --endpoint-url=http://localhost:4566 s3 ls s3://gigavault --recursive \
 - Story 1.3: move upload orchestration into a Service Worker (or equivalent
   background session) so an upload survives full page navigation, plus a
   completion notification when the tab is backgrounded.
+- Real test coverage: `UploadServiceTest` with a mocked `S3Client` for the
+  checksum-mismatch and resume-merge logic; a frontend unit test for
+  `calculateChunkSize` edge cases.

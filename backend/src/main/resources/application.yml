@@ -1,0 +1,28 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: gigavault-backend
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://postgres:5432/gigavault}
+    username: ${DATABASE_USERNAME:gigavault}
+    password: ${DATABASE_PASSWORD:gigavault}
+  jpa:
+    hibernate:
+      # Fine for local/dev use - swap for Flyway/Liquibase before production,
+      # same as the Go version's "raw CREATE TABLE IF NOT EXISTS" caveat.
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+
+gigavault:
+  allowed-origin: ${ALLOWED_ORIGIN:http://localhost:5173}
+  s3:
+    endpoint: ${S3_ENDPOINT:http://localstack:4566}
+    access-key: ${S3_ACCESS_KEY:test}
+    secret-key: ${S3_SECRET_KEY:test}
+    bucket: ${S3_BUCKET:gigavault}
+    region: ${S3_REGION:us-east-1}

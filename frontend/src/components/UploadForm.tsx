@@ -30,29 +30,50 @@ export default function UploadForm() {
     let chunkSize: number;
     let alreadyUploadedParts: number[] = [];
 
+    async function startFresh() {
+      const size = calculateChunkSize(file.size);
+      const initData = await initUpload(file.name, file.size, size);
+      const newRecord: UploadRecord = {
+        fingerprint,
+        sessionId: initData.sessionId,
+        filename: file.name,
+        totalSize: file.size,
+        chunkSize: size,
+        objectKey: initData.objectKey,
+        completedParts: {},
+        status: 'in_progress',
+        updatedAt: Date.now(),
+      };
+      await saveUploadRecord(newRecord);
+      return { record: newRecord, sessionId: initData.sessionId, chunkSize: size, alreadyUploadedParts: [] as number[] };
+    }
+
     try {
       if (record && record.status !== 'completed') {
         // Story 1.2 AC4: resume - ask the backend/S3 what's already there.
-        const resumeData = await resumeUpload(record.sessionId);
-        sessionId = resumeData.sessionId;
-        chunkSize = resumeData.chunkSize;
-        alreadyUploadedParts = resumeData.uploadedParts.map((p) => p.partNumber);
+        try {
+          const resumeData = await resumeUpload(record.sessionId);
+          sessionId = resumeData.sessionId;
+          chunkSize = resumeData.chunkSize;
+          alreadyUploadedParts = resumeData.uploadedParts.map((p) => p.partNumber);
+        } catch (resumeErr) {
+          // The session backing this record is gone server-side (e.g. S3
+          // storage got restarted without persistence, or it was aborted
+          // server-side). Drop the stale local record and start fresh
+          // instead of surfacing a hard error for something recoverable.
+          await deleteUploadRecord(fingerprint);
+          const fresh = await startFresh();
+          record = fresh.record;
+          sessionId = fresh.sessionId;
+          chunkSize = fresh.chunkSize;
+          alreadyUploadedParts = fresh.alreadyUploadedParts;
+        }
       } else {
-        chunkSize = calculateChunkSize(file.size);
-        const initData = await initUpload(file.name, file.size, chunkSize);
-        sessionId = initData.sessionId;
-        record = {
-          fingerprint,
-          sessionId,
-          filename: file.name,
-          totalSize: file.size,
-          chunkSize,
-          objectKey: initData.objectKey,
-          completedParts: {},
-          status: 'in_progress',
-          updatedAt: Date.now(),
-        };
-        await saveUploadRecord(record);
+        const fresh = await startFresh();
+        record = fresh.record;
+        sessionId = fresh.sessionId;
+        chunkSize = fresh.chunkSize;
+        alreadyUploadedParts = fresh.alreadyUploadedParts;
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start upload');

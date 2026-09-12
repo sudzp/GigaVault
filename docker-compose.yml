@@ -21,6 +21,7 @@ services:
       SERVICES: s3
       DEFAULT_REGION: us-east-1
       EAGER_SERVICE_LOADING: "1"
+      PERSISTENCE: "1"
       LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN}
     ports:
       - "4566:4566"   # S3-compatible edge API
@@ -36,7 +37,9 @@ services:
     build: ./backend
     environment:
       PORT: "8080"
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}?sslmode=disable
+      DATABASE_USERNAME: ${POSTGRES_USER}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       S3_ENDPOINT: http://localstack:4566
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}

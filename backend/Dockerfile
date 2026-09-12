@@ -1,17 +1,14 @@
-FROM golang:1.25-alpine AS build
+FROM gradle:8.10-jdk21 AS build
 WORKDIR /app
-RUN apk add --no-cache git
 
-COPY go.mod ./
-COPY . .
+COPY build.gradle settings.gradle ./
+COPY src ./src
 
-# go.mod intentionally has no pinned requires/go.sum committed; this resolves
-# and locks the actual dependency graph against the module proxy at build time.
-RUN go mod tidy
-RUN go build -o /gigavault-server ./cmd/server
+RUN gradle bootJar --no-daemon
 
-FROM alpine:3.20
-RUN apk add --no-cache ca-certificates
-COPY --from=build /gigavault-server /usr/local/bin/gigavault-server
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+COPY --from=build /app/build/libs/*.jar app.jar
+
 EXPOSE 8080
-CMD ["gigavault-server"]
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

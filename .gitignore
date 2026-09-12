@@ -3,3 +3,4 @@ dist/
 backend/gigavault-server
 *.log
 .env
+.DS_Store

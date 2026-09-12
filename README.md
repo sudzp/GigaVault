@@ -1,13 +1,17 @@
-# GigaVault — MVP1 (Epic 1: Stories 1.1 & 1.2)
+# GigaVault — MVP 1
 
-Local dev stack for the resumable, chunked large-file upload pipeline.
+Local development stack for a resilient, chunked large-file upload pipeline.
 
-**In scope for this pass:** Story 1.1 (client-side chunking + MD5) and Story 1.2
-(resumable multipart upload via S3/MinIO). Story 1.3 (Service Worker /
-background upload session so uploads survive navigation) is **not** wired up
-yet — the current version uploads via a dedicated Web Worker, which keeps the
-UI thread free and survives tab switches, but not a full page navigation or
-close. We'll layer that in next.
+**Implemented:** Story 1.1 (client-side chunking and MD5 validation) and Story
+1.2 (resumable S3 multipart upload). The current uploader uses a dedicated Web
+Worker: it keeps the UI responsive and may continue while the tab is
+backgrounded, but browser scheduling cannot be guaranteed. It also cannot
+guarantee execution after a full page navigation, browser close, device sleep,
+or OS suspension. Interrupted uploads can be resumed by selecting the same file
+again.
+
+See [MVP 1 requirements and roadmap](docs/MVP1_REQUIREMENTS.md) for the
+product scope, acceptance criteria, and planned work.
 
 ## Stack
 
@@ -101,9 +105,14 @@ aws --endpoint-url=http://localhost:4566 s3 ls s3://gigavault --recursive \
 
 ## Next up
 
-- Story 1.3: move upload orchestration into a Service Worker (or equivalent
-  background session) so an upload survives full page navigation, plus a
-  completion notification when the tab is backgrounded.
-- Real test coverage: `UploadServiceTest` with a mocked `S3Client` for the
-  checksum-mismatch and resume-merge logic; a frontend unit test for
-  `calculateChunkSize` edge cases.
+- Story 1.3: add an upload manager that survives SPA route changes, explicit
+  pause/resume/abort controls, connection-aware status, and background
+  completion notifications. Browser close and OS suspension will remain
+  recoverable-resume scenarios rather than guaranteed background execution.
+- Test coverage: backend tests with a mocked `S3Client` for checksum mismatch,
+  stale sessions, resume reconciliation, and completion validation; frontend
+  tests for chunk-size boundaries, retry behavior, and resume logic.
+- Production hardening: authentication, authorization, rate limits, upload
+  quotas, abandoned multipart-upload cleanup, structured logs, and metrics.
+- Future: implement client-side encryption and key lifecycle management before
+  describing GigaVault as zero-knowledge.

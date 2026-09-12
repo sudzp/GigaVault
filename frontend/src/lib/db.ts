@@ -8,7 +8,7 @@ export interface UploadRecord {
   chunkSize: number;
   objectKey: string;
   completedParts: Record<number, string>; // partNumber -> etag
-  status: 'in_progress' | 'completed';
+  status: 'in_progress' | 'paused' | 'completed';
   updatedAt: number;
 }
 
@@ -53,6 +53,18 @@ export async function markPartComplete(fingerprint: string, partNumber: number, 
   const record = await db.get('uploads', fingerprint);
   if (!record) return;
   record.completedParts[partNumber] = etag;
+  record.updatedAt = Date.now();
+  await db.put('uploads', record);
+}
+
+export async function updateUploadStatus(
+  fingerprint: string,
+  status: UploadRecord['status']
+) {
+  const db = await getDB();
+  const record = await db.get('uploads', fingerprint);
+  if (!record) return;
+  record.status = status;
   record.updatedAt = Date.now();
   await db.put('uploads', record);
 }

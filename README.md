@@ -105,10 +105,11 @@ aws --endpoint-url=http://localhost:4566 s3 ls s3://gigavault --recursive \
 
 ## Next up
 
-- Story 1.3: add an upload manager that survives SPA route changes, explicit
-  pause/resume/abort controls, connection-aware status, and background
-  completion notifications. Browser close and OS suspension will remain
-  recoverable-resume scenarios rather than guaranteed background execution.
+- Story 1.3: explicit pause/resume/abort controls and connection-aware recovery
+  are implemented. Next, add an upload manager that survives SPA route changes
+  and background completion notifications. Browser close and OS suspension will
+  remain recoverable-resume scenarios rather than guaranteed background
+  execution.
 - Test coverage: backend tests with a mocked `S3Client` for checksum mismatch,
   stale sessions, resume reconciliation, and completion validation; frontend
   tests for chunk-size boundaries, retry behavior, and resume logic.

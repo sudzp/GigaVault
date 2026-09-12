@@ -78,4 +78,12 @@ export async function completeUpload(sessionId: string) {
   return res.json();
 }
 
+export async function abortUpload(sessionId: string) {
+  const res = await fetchWithRetry(`${API_BASE}/api/uploads/${sessionId}/abort`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error('Failed to abort upload');
+  return res.json();
+}
+
 export { API_BASE };

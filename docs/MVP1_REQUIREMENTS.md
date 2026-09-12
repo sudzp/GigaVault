@@ -101,7 +101,7 @@ an upload runs.
 | 2 | Web Worker chunking, MD5 hashing, and dynamic chunk sizing | Complete |
 | 3 | Multipart initialization, part upload, verification, and completion | Complete |
 | 4 | IndexedDB persistence, retry behavior, and S3-authoritative resume | Complete |
-| 5 | Background-aware UX, route-change recovery, notifications, and pause/resume controls | Next |
+| 5 | Background-aware UX, route-change recovery, notifications, and pause/resume controls | In progress |
 | 6 | Automated tests, observability, and production security controls | Next |
 | 7 | Client-side encryption and key lifecycle management | Future |
 
@@ -109,8 +109,10 @@ an upload runs.
 
 1. Introduce an upload manager/store that survives React route changes and
    reconnects to active IndexedDB sessions.
-2. Add explicit pause, resume, and abort controls to the upload interface.
-3. Detect `online` and `offline` events and show a waiting-for-connection state.
+2. Complete — add explicit pause, resume, and abort controls to the upload
+   interface.
+3. Complete — detect `online` and `offline` events, pause safely when offline,
+   and automatically resume when a retained file and connection are available.
 4. Add backend tests for checksum mismatch, stale S3 sessions, part
    reconciliation, and completion validation.
 5. Add frontend tests for chunk-size limits, retries, and resume behavior.

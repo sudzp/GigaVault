@@ -1,0 +1,9 @@
+# Ignore Gradle build outputs and caches
+.gradle/
+build/
+
+# Do NOT ignore these wrapper files
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+!gradlew
+!gradlew.bat

@@ -34,6 +34,9 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+    // Add this line to allow Gradle 9 to launch your JUnit 5 tests
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 // Only the executable Spring Boot fat jar is needed; disabling the plain
